@@ -4,39 +4,30 @@
 """
 
 
-import os
-import numpy as np
-from tqdm import tqdm
-from torch.utils.data import Dataset
-import torch
-
+import sys,os
+import warnings
+from datetime import datetime
 import wandb
 
+import torch
 from torch import nn
-
 import torch.optim as optim
 
-from datetime import datetime
 
-import warnings
+from T_DataLoader.DataLoader import TamilDataLoader
+from T_models.ElectraCNN import ElectraCNN
 
 
-import sys,os
+
 sys.path.append(os.getcwd())
-
-
-from T_DataLoader import DataLoader
-from T_models import ElectraCNN
-
-
-
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 wandb.init(project="finetuning-ELECTRA", entity="team-knitts")
 
+tokenizer_name = 'monsoon-nlp/tamillion'
+root_path = './T_Dataset/train/train/'
+model_dir = './checkpoints/models/' + tokenizer_name + '/'
 
 
-root_path = 'H:/sem8/nlp/dataset/train/train/'
-model_dir = 'H:/sem8/nlp/implementation/checkpoint/models/'
 load_model = False
 
 
@@ -48,9 +39,9 @@ config = {
 }
 
 
-
-
-
+if(not os.path.exists(model_dir)):
+  os.makedirs(model_dir)
+  print('creating', model_dir)
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -59,7 +50,7 @@ print('Using device:', device)
 wandb.config = config
 
 
-train_dataloader = DataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size = 4, device=device)
+train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 4, device=device)
 
 
 try:
@@ -73,14 +64,14 @@ try:
   print('checkpoint loaded...')
   model.load_state_dict(checkpoint['model_state_dict'])
   optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+  criterion = checkpoint['loss']
   print('model loaded...')
 
 except: 
   print("can't load model...")
   model = ElectraCNN()
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
-
-criterion = nn.NLLLoss()
+  criterion = nn.NLLLoss()
 model.to(device)
 
 epochs = config['epochs']
@@ -100,9 +91,10 @@ for epoch in range(epochs):
 
     outputs = outputs.squeeze(-1)
     loss = criterion(outputs.to(device), targets.type(torch.LongTensor).to(device))
+
+
     wandb.log({"loss": loss.item()}, step=step)
     wandb.watch(model, log_freq = 100)
-
 
     if(t==0):
       print({'targets': targets.cpu(), 'outputs': outputs.cpu()})
@@ -120,8 +112,8 @@ for epoch in range(epochs):
           'optimizer_state_dict' : optimizer.state_dict(),
           'loss' : criterion,
       }, model_dir + 'model' + date_time + '.pth')
-
-      print('saving model...')
+      
+      print('model saved')
 
     loss.backward()
     optimizer.step()

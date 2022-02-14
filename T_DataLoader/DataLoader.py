@@ -58,22 +58,23 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
 
 
     dataset_processed = []
+
     for tdata in tqdm(dataset):
         tdata = re.split('<?doc .*>|\n', tdata[0])[1:]
         dataset_processed.append(list(filter(None, [tdata_.strip('</doc>\n') for tdata_ in tdata])))
-        print(np.array(dataset_processed).shape)
+        # print(np.array(dataset_processed).shape)
 
         dataset_combined = []
         for data in dataset_processed:
             dataset_combined += data
-        del dataset_processed
 
-    del dataset
+    # del dataset_processed
+    # del dataset
     corrupted_dataset = pd.DataFrame(list(map(corrupt_dataset, tqdm(dataset_combined))))
-    del corrupted_dataset['places']
+    # del corrupted_dataset['places']
     pd_dataset = pd.DataFrame(corrupted_dataset)
-    del corrupt_dataset
-    del dataset_combined
+    # del corrupt_dataset
+    # del dataset_combined
     pd_dataset.head()
 
 
