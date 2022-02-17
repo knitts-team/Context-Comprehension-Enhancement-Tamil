@@ -9,18 +9,19 @@ import pandas as pd
 import re
 
 class TamilDataset(Dataset):
-    def __init__(self, dataset, target, tokenizer, device='cpu'):
+    def __init__(self, dataset, target, tokenizer, device='cpu', tokenizer_kwargs={}):
         self.dataset = dataset
         self.target = target
         self.device = device
         self.tokenizer = tokenizer
+        self.tokenizer_kwargs = tokenizer_kwargs
 
     def __len__(self):
         return len(self.dataset)
 
 
     def __getitem__(self, idx):
-        batch = self.tokenizer(self.dataset[idx], truncation=True, max_length=1024, padding='max_length', return_tensors='pt')
+        batch = self.tokenizer(self.dataset[idx], truncation=True, max_length=512, padding='max_length', return_tensors='pt', **self.tokenizer_kwargs)
         return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
 
 
@@ -46,7 +47,7 @@ def corrupt_dataset(data):
 
 
 
-def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu'):
+def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', tokenizer_kwargs = {}):
 
 
     text_file_names = os.listdir(root_path)
@@ -62,20 +63,14 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
     for tdata in tqdm(dataset):
         tdata = re.split('<?doc .*>|\n', tdata[0])[1:]
         dataset_processed.append(list(filter(None, [tdata_.strip('</doc>\n') for tdata_ in tdata])))
-        # print(np.array(dataset_processed).shape)
 
         dataset_combined = []
         for data in dataset_processed:
             dataset_combined += data
 
-    # del dataset_processed
-    # del dataset
     corrupted_dataset = pd.DataFrame(list(map(corrupt_dataset, tqdm(dataset_combined))))
     # del corrupted_dataset['places']
     pd_dataset = pd.DataFrame(corrupted_dataset)
-    # del corrupt_dataset
-    # del dataset_combined
-    pd_dataset.head()
 
 
 
@@ -85,7 +80,7 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
     data = list(pd_dataset['data']) 
     labels = list(pd_dataset['label'])
 
-    dataset = TamilDataset(data, labels, tokenizer, device)
+    dataset = TamilDataset(data, labels, tokenizer, device, tokenizer_kwargs = tokenizer_kwargs)
     train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return train_dataloader

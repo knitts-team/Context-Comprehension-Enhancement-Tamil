@@ -25,12 +25,25 @@ sys.path.append(os.getcwd())
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 wandb.init(project="finetuning-GPT-2", entity="team-knitts")
 
+GPT2CNN_kwargs = {
+  'max_length' : 1024,
+}
+
+ElectraCNN_kwargs = {
+  'max_length' : 512
+}
+
+
 tokenizer_name = 'abinayam/gpt-2-tamil'
+tokenizer_kwargs = GPT2CNN_kwargs
+
+
+
 root_path = './T_Dataset/train/train/'
 model_dir = './checkpoints/models/' + tokenizer_name + '/'
 
-
-load_model = False
+use_wandb = True
+load_model = True
 
 
 config = {
@@ -49,10 +62,10 @@ if(not os.path.exists(model_dir)):
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.cuda.empty_cache()
 print('Using device:', device)
-wandb.config = config
+if(use_wandb):wandb.config = config
 
 
-train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device=device)
+train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device=device, tokenizer_kwargs=tokenizer_kwargs)
 
 
 try:
@@ -95,16 +108,16 @@ for epoch in range(epochs):
     outputs = outputs.squeeze(-1)
     loss = criterion(outputs.to(device), targets.type(torch.LongTensor).to(device))
 
-
-    wandb.log({"loss": loss.item()}, step=step)
-    # wandb.watch(model, log_freq = 100)
+    if(use_wandb):wandb.log({"loss": loss.item()}, step=step)
+    else: print({"loss": loss.item()})
+    # if(use_wandb):wandb.watch(model, log_freq = 100)
 
     if(t==0):
       print({'targets': targets.cpu(), 'outputs': outputs.cpu()})
 
     if( ( epoch % 2 == 0 and t == 0 and epoch > 0 ) or (step % 100 == 0 and step > 0)):
       print('epoch:%d t:%d loss:%.2f'%(epoch, t, loss.item()))
-      # wandb.log({'targets': targets.cpu(), 'outputs': outputs.cpu()})
+      # if(use_wandb):wandb.log({'targets': targets.cpu(), 'outputs': outputs.cpu()})
       print({'targets': targets.cpu(), 'outputs': outputs.cpu()})
       now = datetime.now() # current date and time
       date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
