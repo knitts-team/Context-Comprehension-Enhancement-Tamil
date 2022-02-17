@@ -1,3 +1,4 @@
+from matplotlib.style import use
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch
@@ -8,17 +9,22 @@ import os
 import pandas as pd
 import re
 from datetime import datetime
+import ast
+
 
 class TamilDataset(Dataset):
-    def __init__(self, dataset, target, tokenizer, device='cpu', tokenizer_kwargs={}):
+    def __init__(self, dataset, target, tokenizer=None, device='cpu', use_cache=False, tokenizer_kwargs={}):
         self.dataset = dataset
+        self.use_cache=use_cache
         self.target = target
         self.device = device
-        self.tokenizer = tokenizer
-        self.tokenizer_kwargs = tokenizer_kwargs
-        self.tokenizer_kwargs.setdefault('max_length', 512)
-        self.tokenizer_kwargs.setdefault('truncation', True)
-        self.tokenizer_kwargs.setdefault('padding', 'max_length')
+        print('self.use_cache', self.use_cache)
+        if(not use_cache):
+            self.tokenizer = tokenizer
+            self.tokenizer_kwargs = tokenizer_kwargs
+            self.tokenizer_kwargs.setdefault('max_length', 512)
+            self.tokenizer_kwargs.setdefault('truncation', True)
+            self.tokenizer_kwargs.setdefault('padding', 'max_length')
 
 
     def __len__(self):
@@ -26,9 +32,13 @@ class TamilDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        print(self.tokenizer_kwargs)
-        batch = self.tokenizer(self.dataset[idx], return_tensors='pt', **self.tokenizer_kwargs)
-        return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
+        # print(self.tokenizer_kwargs)
+        if(not self.use_cache):
+            batch = self.tokenizer(self.dataset[idx], return_tensors='pt', **self.tokenizer_kwargs)
+            return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
+        else:
+            print({'data': self.dataset[idx], 'target': self.target[idx]})
+            return {'data': self.dataset[idx].to(self.device), 'target': self.target[idx].to(self.device)}
 
 
 def encode(tokenizer, dataset, target, device='cpu', tokenizer_kwargs={}):
@@ -61,7 +71,27 @@ def corrupt_dataset(data):
 
 
 
-def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', write_cache=False, cache_path = './cache/dump/', tokenizer_kwargs = {}):
+def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', write_cache=False, use_cache=False, cache_dir = './cache/dump/', tokenizer_kwargs = {}):
+
+    print('use_cache', use_cache)
+    if(use_cache):
+        try:
+            print(cache_dir)
+            print(os.listdir(cache_dir))
+            filename = cache_dir + sorted(os.listdir(cache_dir))[-1]
+            print('reading from file', filename)
+            pd_dataset = pd.read_pickle(filename)
+            print('finished reading file from cache')
+            print(pd_dataset.head())
+            data = list(pd_dataset['data'])
+            labels = list(pd_dataset['target'])
+            dataset = TamilDataset(data, labels, use_cache=use_cache)
+            train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+            print('returning dataloader')
+            return train_dataloader
+        except:
+            use_cache = False
+            print("cannot use cache")
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     tokenizer.pad_token = 0 
@@ -86,14 +116,13 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
 
     corrupted_dataset = list(map(corrupt_dataset, tqdm(dataset_combined)))
 
-    print(len(corrupted_dataset), corrupted_dataset[:2])
     if(write_cache):
         corrupted_dataset = [encode(tokenizer, data['data'], data['label'], device='cpu', tokenizer_kwargs=tokenizer_kwargs) for data in tqdm(corrupted_dataset)]
         pd_dataset = pd.DataFrame(corrupted_dataset)
         now = datetime.now() # current date and time
         date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
-        print('writing to file ', cache_path + date_time + '.csv')
-        pd_dataset.to_csv(cache_path + date_time + '.csv', index=False)
+        print('writing to file ', cache_dir + date_time + '.pkl')
+        pd_dataset.to_pickle(cache_dir + date_time + '.pkl')
         print('finished writing...')
         del pd_dataset, corrupted_dataset
         exit(0)
@@ -129,6 +158,6 @@ if __name__ == '__main__':
         print('creating', cache_dir)    
 
 
-    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', write_cache= write_cache, cache_path = cache_dir, tokenizer_kwargs=tokenizer_kwargs)
+    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', write_cache= write_cache, cache_dir = cache_dir, tokenizer_kwargs=tokenizer_kwargs)
     batch = next(iter(train_dataloader))
 

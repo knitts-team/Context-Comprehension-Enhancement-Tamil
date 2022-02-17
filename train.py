@@ -21,7 +21,7 @@ from T_models.GPT2CNN import GPT2CNN
 
 
 use_cache = False
-use_wandb = False
+use_wandb = True
 load_model = True
 
 
@@ -41,7 +41,7 @@ tokenizer_kwargs = GPT2CNN_kwargs
 
 root_path = './T_Dataset/train/train/'
 model_dir = './checkpoints/models/' + tokenizer_name + '/'
-cache_dir = './cache/tokenizers' + tokenizer_name + '/'
+cache_dir = './cache/tokenizers/' + tokenizer_name + '/'
 
 
 
@@ -62,13 +62,14 @@ if(not os.path.exists(model_dir)):
   os.makedirs(cache_dir)
   print('creating', model_dir)
 
-if( use_cache and ( (not os.path.exists(cache_dir) ) or len(os.listdir(os.path(cache_dir))) == 0) ):
+if( use_cache and ( (not os.path.exists(cache_dir) ) or len(os.listdir(cache_dir)) == 0) ):
   if(not os.path.exists(cache_dir)):
     print("can not use cache because ", cache_dir, "does not exists")
     os.makedirs(model_dir)
     print('creating', cache_dir)
   else:
     print("can not use cache because ", cache_dir, " is empty")
+  use_cache=False
 
 
 
@@ -78,8 +79,7 @@ torch.cuda.empty_cache()
 print('Using device:', device)
 if(use_wandb):wandb.config = config
 
-
-train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device=device, tokenizer_kwargs=tokenizer_kwargs)
+train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device=device, use_cache=use_cache, cache_dir=cache_dir, tokenizer_kwargs=tokenizer_kwargs)
 
 
 try:
