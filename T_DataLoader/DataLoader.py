@@ -15,13 +15,18 @@ class TamilDataset(Dataset):
         self.device = device
         self.tokenizer = tokenizer
         self.tokenizer_kwargs = tokenizer_kwargs
+        self.tokenizer_kwargs.setdefault('max_length', 512)
+        self.tokenizer_kwargs.setdefault('truncation', True)
+        self.tokenizer_kwargs.setdefault('padding', 'max_length')
+
 
     def __len__(self):
         return len(self.dataset)
 
 
     def __getitem__(self, idx):
-        batch = self.tokenizer(self.dataset[idx], truncation=True, max_length=512, padding='max_length', return_tensors='pt', **self.tokenizer_kwargs)
+        print(self.tokenizer_kwargs)
+        batch = self.tokenizer(self.dataset[idx], return_tensors='pt', **self.tokenizer_kwargs)
         return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
 
 
@@ -84,5 +89,16 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
     train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return train_dataloader
+
+
+if __name__ == '__main__':
+    GPT2CNN_kwargs = {'max_length' : 1024,}
+    ElectraCNN_kwargs = {'max_length' : 512}
+    tokenizer_name = 'abinayam/gpt-2-tamil'
+    tokenizer_kwargs = GPT2CNN_kwargs
+    root_path = './T_Dataset/train/train/'
+    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', tokenizer_kwargs=tokenizer_kwargs)
+    batch = next(iter(train_dataloader))
+
 
 

@@ -20,10 +20,10 @@ from T_models.ElectraCNN import ElectraCNN
 from T_models.GPT2CNN import GPT2CNN
 
 
+use_cache = False
+use_wandb = False
+load_model = True
 
-sys.path.append(os.getcwd())
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-wandb.init(project="finetuning-GPT-2", entity="team-knitts")
 
 GPT2CNN_kwargs = {
   'max_length' : 1024,
@@ -41,9 +41,8 @@ tokenizer_kwargs = GPT2CNN_kwargs
 
 root_path = './T_Dataset/train/train/'
 model_dir = './checkpoints/models/' + tokenizer_name + '/'
+cache_dir = './cache/models' + tokenizer_name + '/'
 
-use_wandb = True
-load_model = True
 
 
 config = {
@@ -54,9 +53,24 @@ config = {
 }
 
 
+
+sys.path.append(os.getcwd())
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+if(use_wandb):wandb.init(project="finetuning-GPT-2", entity="team-knitts")
+
 if(not os.path.exists(model_dir)):
   os.makedirs(model_dir)
   print('creating', model_dir)
+
+if( use_cache and ( (not os.path.exists(cache_dir) ) or len(os.listdir(os.path(cache_dir))) == 0) ):
+  if(not os.path.exists(cache_dir)):
+    print("can not use cache because ", cache_dir, "does not exists")
+    os.makedirs(model_dir)
+    print('creating', cache_dir)
+  else:
+    print("can not use cache because ", cache_dir, " is empty")
+
+
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

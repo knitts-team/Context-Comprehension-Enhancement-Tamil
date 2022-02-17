@@ -1,4 +1,6 @@
 T_Dataset/*
 !T_Dataset/.gitkeep
+cache/*
+!cache/.gitkeep
 checkpoints
 wandb
