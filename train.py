@@ -8,6 +8,7 @@ import sys,os
 import warnings
 from datetime import datetime
 import wandb
+from tqdm import tqdm
 
 import torch
 from torch import nn
@@ -16,14 +17,15 @@ import torch.optim as optim
 
 from T_DataLoader.DataLoader import TamilDataLoader
 from T_models.ElectraCNN import ElectraCNN
+from T_models.GPT2CNN import GPT2CNN
 
 
 
 sys.path.append(os.getcwd())
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-wandb.init(project="finetuning-ELECTRA", entity="team-knitts")
+wandb.init(project="finetuning-GPT-2", entity="team-knitts")
 
-tokenizer_name = 'monsoon-nlp/tamillion'
+tokenizer_name = 'abinayam/gpt-2-tamil'
 root_path = './T_Dataset/train/train/'
 model_dir = './checkpoints/models/' + tokenizer_name + '/'
 
@@ -50,13 +52,13 @@ print('Using device:', device)
 wandb.config = config
 
 
-train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 4, device=device)
+train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 32, device=device)
 
 
 try:
   if(load_model == False):
     raise Exception("don't load model - exception called")
-  model = ElectraCNN(device)
+  model = GPT2CNN(device)
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
   latest_model_file = model_dir + sorted(os.listdir(model_dir))[-1]
   print('loading from ',latest_model_file)
@@ -69,7 +71,7 @@ try:
 
 except: 
   print("can't load model...")
-  model = ElectraCNN()
+  model = GPT2CNN()
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
   criterion = nn.NLLLoss()
 model.to(device)
@@ -79,7 +81,8 @@ epochs = config['epochs']
 
 step = 0
 for epoch in range(epochs):
-  for t, batch in enumerate(train_dataloader):
+  t = 0
+  for batch in tqdm(train_dataloader):
     step += 1
     data = batch['data']
     targets = batch['target'] 
@@ -94,12 +97,12 @@ for epoch in range(epochs):
 
 
     wandb.log({"loss": loss.item()}, step=step)
-    wandb.watch(model, log_freq = 100)
+    # wandb.watch(model, log_freq = 100)
 
     if(t==0):
       print({'targets': targets.cpu(), 'outputs': outputs.cpu()})
 
-    if(epoch % 2 == 0 and t == 0 and epoch > 0):
+    if( ( epoch % 2 == 0 and t == 0 and epoch > 0 ) or (step % 100 == 0 and step > 0)):
       print('epoch:%d t:%d loss:%.2f'%(epoch, t, loss.item()))
       wandb.log({'targets': targets.cpu(), 'outputs': outputs.cpu()})
       now = datetime.now() # current date and time
@@ -120,5 +123,7 @@ for epoch in range(epochs):
 
     del outputs
     del targets
+
+    t += 1
 
 

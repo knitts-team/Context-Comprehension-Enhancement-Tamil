@@ -20,7 +20,7 @@ class TamilDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        batch = self.tokenizer(self.dataset[idx], truncation=True, max_length=512, padding='max_length', return_tensors='pt')
+        batch = self.tokenizer(self.dataset[idx], truncation=True, max_length=1024, padding='max_length', return_tensors='pt')
         return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
 
 
