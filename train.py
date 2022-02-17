@@ -52,7 +52,7 @@ print('Using device:', device)
 wandb.config = config
 
 
-train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 32, device=device)
+train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device=device)
 
 
 try:
@@ -104,7 +104,8 @@ for epoch in range(epochs):
 
     if( ( epoch % 2 == 0 and t == 0 and epoch > 0 ) or (step % 100 == 0 and step > 0)):
       print('epoch:%d t:%d loss:%.2f'%(epoch, t, loss.item()))
-      wandb.log({'targets': targets.cpu(), 'outputs': outputs.cpu()})
+      # wandb.log({'targets': targets.cpu(), 'outputs': outputs.cpu()})
+      print({'targets': targets.cpu(), 'outputs': outputs.cpu()})
       now = datetime.now() # current date and time
       date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
 
