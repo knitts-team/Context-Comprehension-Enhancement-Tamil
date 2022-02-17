@@ -41,7 +41,7 @@ tokenizer_kwargs = GPT2CNN_kwargs
 
 root_path = './T_Dataset/train/train/'
 model_dir = './checkpoints/models/' + tokenizer_name + '/'
-cache_dir = './cache/models' + tokenizer_name + '/'
+cache_dir = './cache/tokenizers' + tokenizer_name + '/'
 
 
 
@@ -59,7 +59,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 if(use_wandb):wandb.init(project="finetuning-GPT-2", entity="team-knitts")
 
 if(not os.path.exists(model_dir)):
-  os.makedirs(model_dir)
+  os.makedirs(cache_dir)
   print('creating', model_dir)
 
 if( use_cache and ( (not os.path.exists(cache_dir) ) or len(os.listdir(os.path(cache_dir))) == 0) ):

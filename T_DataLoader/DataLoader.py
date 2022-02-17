@@ -7,6 +7,7 @@ from tqdm import tqdm
 import os
 import pandas as pd
 import re
+from datetime import datetime
 
 class TamilDataset(Dataset):
     def __init__(self, dataset, target, tokenizer, device='cpu', tokenizer_kwargs={}):
@@ -30,6 +31,14 @@ class TamilDataset(Dataset):
         return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
 
 
+def encode(tokenizer, dataset, target, device='cpu', tokenizer_kwargs={}):
+    tokenizer_kwargs.setdefault('max_length', 512)
+    tokenizer_kwargs.setdefault('truncation', True)
+    tokenizer_kwargs.setdefault('padding', 'max_length')
+    batch = tokenizer(dataset, return_tensors='pt', **tokenizer_kwargs)
+    # print({'data': batch['input_ids'].to(device), 'target': torch.tensor(np.array(target, dtype=np.float32)).to(device)})
+    return {'data': batch['input_ids'].to(device), 'target': torch.tensor(np.array(target, dtype=np.float32)).to(device)}
+
 def corrupt_dataset(data):
     x = np.random.randint(2, size=1)[0]
     l = len(data) 
@@ -52,8 +61,10 @@ def corrupt_dataset(data):
 
 
 
-def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', tokenizer_kwargs = {}):
+def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', write_cache=False, cache_path = './cache/dump/', tokenizer_kwargs = {}):
 
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    tokenizer.pad_token = 0 
 
     text_file_names = os.listdir(root_path)
     dataset = []
@@ -73,14 +84,25 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
         for data in dataset_processed:
             dataset_combined += data
 
-    corrupted_dataset = pd.DataFrame(list(map(corrupt_dataset, tqdm(dataset_combined))))
+    corrupted_dataset = list(map(corrupt_dataset, tqdm(dataset_combined)))
+
+    print(len(corrupted_dataset), corrupted_dataset[:2])
+    if(write_cache):
+        corrupted_dataset = [encode(tokenizer, data['data'], data['label'], device='cpu', tokenizer_kwargs=tokenizer_kwargs) for data in tqdm(corrupted_dataset)]
+        pd_dataset = pd.DataFrame(corrupted_dataset)
+        now = datetime.now() # current date and time
+        date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
+        print('writing to file ', cache_path + date_time + '.csv')
+        pd_dataset.to_csv(cache_path + date_time + '.csv', index=False)
+        print('finished writing...')
+        del pd_dataset, corrupted_dataset
+        exit(0)
+
     # del corrupted_dataset['places']
     pd_dataset = pd.DataFrame(corrupted_dataset)
 
 
 
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    tokenizer.pad_token = 0 
 
     data = list(pd_dataset['data']) 
     labels = list(pd_dataset['label'])
@@ -97,8 +119,16 @@ if __name__ == '__main__':
     tokenizer_name = 'abinayam/gpt-2-tamil'
     tokenizer_kwargs = GPT2CNN_kwargs
     root_path = './T_Dataset/train/train/'
-    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', tokenizer_kwargs=tokenizer_kwargs)
+
+
+    write_cache = True
+    cache_dir = './cache/tokenizers/' + tokenizer_name + '/'
+    if(write_cache and not os.path.exists(cache_dir)):
+        print("can not use cache because ", cache_dir, "does not exists")
+        os.makedirs(cache_dir)
+        print('creating', cache_dir)    
+
+
+    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', write_cache= write_cache, cache_path = cache_dir, tokenizer_kwargs=tokenizer_kwargs)
     batch = next(iter(train_dataloader))
-
-
 
