@@ -18,6 +18,7 @@ import torch.optim as optim
 from T_DataLoader.DataLoader import TamilDataLoader
 from T_models.ElectraCNN import ElectraCNN
 from T_models.GPT2CNN import GPT2CNN
+from T_models.GPT2 import GPT2
 
 
 use_cache = False
@@ -85,7 +86,7 @@ train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, bat
 try:
   if(load_model == False):
     raise Exception("don't load model - exception called")
-  model = GPT2CNN(device)
+  model = GPT2(device)
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
   latest_model_file = model_dir + sorted(os.listdir(model_dir))[-1]
   print('loading from ',latest_model_file)

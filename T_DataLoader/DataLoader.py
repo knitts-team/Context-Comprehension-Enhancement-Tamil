@@ -32,7 +32,6 @@ class TamilDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        # print(self.tokenizer_kwargs)
         if(not self.use_cache):
             batch = self.tokenizer(self.dataset[idx], return_tensors='pt', **self.tokenizer_kwargs)
             return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
@@ -46,7 +45,6 @@ def encode(tokenizer, dataset, target, device='cpu', tokenizer_kwargs={}):
     tokenizer_kwargs.setdefault('truncation', True)
     tokenizer_kwargs.setdefault('padding', 'max_length')
     batch = tokenizer(dataset, return_tensors='pt', **tokenizer_kwargs)
-    # print({'data': batch['input_ids'].to(device), 'target': torch.tensor(np.array(target, dtype=np.float32)).to(device)})
     return {'data': batch['input_ids'].to(device), 'target': torch.tensor(np.array(target, dtype=np.float32)).to(device)}
 
 def corrupt_dataset(data):
