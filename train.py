@@ -30,13 +30,15 @@ GPT2CNN_kwargs = {
   'max_length' : 1024,
 }
 
+GPT2_kwargs = GPT2CNN_kwargs
+
 ElectraCNN_kwargs = {
   'max_length' : 512
 }
 
 
 tokenizer_name = 'abinayam/gpt-2-tamil'
-tokenizer_kwargs = GPT2CNN_kwargs
+tokenizer_kwargs = GPT2_kwargs
 
 
 
@@ -99,7 +101,7 @@ try:
 
 except: 
   print("can't load model...")
-  model = GPT2CNN()
+  model = GPT2()
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
   criterion = nn.NLLLoss()
 model.to(device)

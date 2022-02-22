@@ -9,7 +9,6 @@ import os
 import pandas as pd
 import re
 from datetime import datetime
-import ast
 
 
 class TamilDataset(Dataset):
@@ -67,11 +66,7 @@ def corrupt_dataset(data):
     return {'data' : new_data, 'label' : label, 'places' : places }
 
 
-
-
-def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', write_cache=False, use_cache=False, cache_dir = './cache/dump/', tokenizer_kwargs = {}):
-
-    print('use_cache', use_cache)
+def ReadDatasetFiles(root_path,  use_cache=False, cache_dir = './cache/dump/', test=False):
     if(use_cache):
         try:
             print(cache_dir)
@@ -84,15 +79,10 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
             data = list(pd_dataset['data'])
             labels = list(pd_dataset['target'])
             dataset = TamilDataset(data, labels, use_cache=use_cache)
-            train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-            print('returning dataloader')
-            return train_dataloader
+            return dataset
         except:
             use_cache = False
             print("cannot use cache")
-
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    tokenizer.pad_token = 0 
 
     text_file_names = os.listdir(root_path)
     dataset = []
@@ -100,10 +90,13 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
     for file_name in tqdm(text_file_names):
         with open(root_path + file_name, 'r', encoding="utf8") as f:
             dataset.append([f.read()])
+    if(test):
+        return dataset[:100]
+    
+    return dataset
 
-
+def ProcessDataset(dataset, test=False):
     dataset_processed = []
-
     for tdata in tqdm(dataset):
         tdata = re.split('<?doc .*>|\n', tdata[0])[1:]
         dataset_processed.append(list(filter(None, [tdata_.strip('</doc>\n') for tdata_ in tdata])))
@@ -111,29 +104,42 @@ def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_siz
         dataset_combined = []
         for data in dataset_processed:
             dataset_combined += data
-
+    dataset_combined = dataset_combined[:100]
     corrupted_dataset = list(map(corrupt_dataset, tqdm(dataset_combined)))
+    return corrupted_dataset
+
+def TokenizeAllData(dataset, tokenizer, device='cpu', tokenizer_kwargs = {}):
+    dataset = [encode(tokenizer, data['data'], data['label'], device=device, tokenizer_kwargs=tokenizer_kwargs) for data in tqdm(dataset)]
+    df = pd.DataFrame(dataset)
+    now = datetime.now() # current date and time
+    date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
+    print('writing to file ', cache_dir + date_time + '.pkl')
+    df.to_pickle(cache_dir + date_time + '.pkl')
+    print('finished writing...')
+    exit(0)
+
+
+
+def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', write_cache=False, use_cache=False, cache_dir = './cache/dump/', test=False, tokenizer_kwargs = {}):
+
+    print('use_cache', use_cache)
+    dataset = ReadDatasetFiles(root_path, tokenizer_name, batch_size)
+    if(use_cache):
+        train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, test=test)
+        print('returning dataloader')
+        return train_dataloader
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    tokenizer.pad_token = 0 
+    processed_dataset = ProcessDataset(dataset, test)
 
     if(write_cache):
-        corrupted_dataset = [encode(tokenizer, data['data'], data['label'], device='cpu', tokenizer_kwargs=tokenizer_kwargs) for data in tqdm(corrupted_dataset)]
-        pd_dataset = pd.DataFrame(corrupted_dataset)
-        now = datetime.now() # current date and time
-        date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
-        print('writing to file ', cache_dir + date_time + '.pkl')
-        pd_dataset.to_pickle(cache_dir + date_time + '.pkl')
-        print('finished writing...')
-        del pd_dataset, corrupted_dataset
-        exit(0)
+        TokenizeAllData(processed_dataset, tokenizer, device, tokenizer_kwargs)
 
-    # del corrupted_dataset['places']
-    pd_dataset = pd.DataFrame(corrupted_dataset)
-
-
-
-
-    data = list(pd_dataset['data']) 
-    labels = list(pd_dataset['label'])
-
+    # del processed_dataset['places']
+    df = pd.DataFrame(processed_dataset)
+    data = list(df['data']) 
+    labels = list(df['label'])
     dataset = TamilDataset(data, labels, tokenizer, device, tokenizer_kwargs = tokenizer_kwargs)
     train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -148,14 +154,15 @@ if __name__ == '__main__':
     root_path = './T_Dataset/train/train/'
 
 
-    write_cache = True
+    test=True
+    write_cache = False
     cache_dir = './cache/tokenizers/' + tokenizer_name + '/'
     if(write_cache and not os.path.exists(cache_dir)):
         print("can not use cache because ", cache_dir, "does not exists")
         os.makedirs(cache_dir)
         print('creating', cache_dir)    
 
-
-    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', write_cache= write_cache, cache_dir = cache_dir, tokenizer_kwargs=tokenizer_kwargs)
+    train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device='cpu', write_cache= write_cache, cache_dir = cache_dir, test=test, tokenizer_kwargs=tokenizer_kwargs)
     batch = next(iter(train_dataloader))
+    print(batch)
 
