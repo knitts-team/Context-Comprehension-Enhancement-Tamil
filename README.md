@@ -1,0 +1,10 @@
+# Context-Comprehension-Enhancement-Tamil
+A NLP-based solution to context comprehension and enhancement in Tamil language 
+
+## Getting Started
+
+Create a conda environment _my_env_ <br/>
+```
+conda env update -n my_env --file path\to\environment\environment.yml 
+conda activate my_env
+```
