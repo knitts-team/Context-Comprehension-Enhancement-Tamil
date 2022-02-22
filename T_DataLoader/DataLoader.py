@@ -24,7 +24,7 @@ class TamilDataset(Dataset):
             self.tokenizer_kwargs.setdefault('max_length', 512)
             self.tokenizer_kwargs.setdefault('truncation', True)
             self.tokenizer_kwargs.setdefault('padding', 'max_length')
-
+            print('init done')
 
     def __len__(self):
         return len(self.dataset)
@@ -32,7 +32,9 @@ class TamilDataset(Dataset):
 
     def __getitem__(self, idx):
         if(not self.use_cache):
+            print('before batch')
             batch = self.tokenizer(self.dataset[idx], return_tensors='pt', **self.tokenizer_kwargs)
+            print('after batch')
             return {'data': batch['input_ids'].to(self.device), 'target': torch.tensor(np.array(self.target[idx], dtype=np.float32)).to(self.device)}
         else:
             print({'data': self.dataset[idx], 'target': self.target[idx]})
@@ -123,7 +125,7 @@ def TokenizeAllData(dataset, tokenizer, device='cpu', tokenizer_kwargs = {}):
 def TamilDataLoader(root_path, tokenizer_name="monsoon-nlp/tamillion", batch_size=1, device='cpu', write_cache=False, use_cache=False, cache_dir = './cache/dump/', test=False, tokenizer_kwargs = {}):
 
     print('use_cache', use_cache)
-    dataset = ReadDatasetFiles(root_path, tokenizer_name, batch_size)
+    dataset = ReadDatasetFiles(root_path, tokenizer_name, batch_size, test=test)
     if(use_cache):
         train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, test=test)
         print('returning dataloader')
