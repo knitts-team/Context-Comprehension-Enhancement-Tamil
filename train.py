@@ -22,7 +22,7 @@ from T_models.GPT2 import GPT2
 
 
 use_cache = False
-use_wandb = True
+use_wandb = False
 load_model = True
 
 
@@ -82,7 +82,7 @@ torch.cuda.empty_cache()
 print('Using device:', device)
 if(use_wandb):wandb.config = config
 
-train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = 2, device=device, use_cache=use_cache, cache_dir=cache_dir, tokenizer_kwargs=tokenizer_kwargs)
+train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, batch_size = config['batch_size'], device=device, use_cache=use_cache, cache_dir=cache_dir, tokenizer_kwargs=tokenizer_kwargs)
 
 
 try:

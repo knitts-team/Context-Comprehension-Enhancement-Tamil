@@ -106,7 +106,9 @@ def ProcessDataset(dataset, test=False):
         dataset_combined = []
         for data in dataset_processed:
             dataset_combined += data
-    dataset_combined = dataset_combined[:100]
+    if (test==True):
+        dataset_combined = dataset_combined[:100]
+
     corrupted_dataset = list(map(corrupt_dataset, tqdm(dataset_combined)))
     return corrupted_dataset
 
