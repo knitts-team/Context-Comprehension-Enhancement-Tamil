@@ -23,7 +23,7 @@ from T_models.GPT2 import GPT2
 
 use_cache = False
 use_wandb = False
-load_model = True
+load_model = False
 
 
 GPT2CNN_kwargs = {
@@ -88,7 +88,7 @@ train_dataloader = TamilDataLoader(root_path, tokenizer_name=tokenizer_name, bat
 try:
   if(load_model == False):
     raise Exception("don't load model - exception called")
-  model = GPT2(device)
+  model = GPT2CNN(device)
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
   latest_model_file = model_dir + sorted(os.listdir(model_dir))[-1]
   print('loading from ',latest_model_file)
@@ -101,7 +101,7 @@ try:
 
 except: 
   print("can't load model...")
-  model = GPT2()
+  model = GPT2CNN()
   optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'], betas=config['betas'], eps=1e-08, weight_decay=0, amsgrad=False)
   criterion = nn.NLLLoss()
 model.to(device)

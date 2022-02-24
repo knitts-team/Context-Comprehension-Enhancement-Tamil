@@ -1,6 +1,10 @@
+#Byte-compiled / optimized / DLL files
+__pycache__
 T_Dataset/*
 !T_Dataset/.gitkeep
 cache/*
 !cache/dump/.gitkeep
 checkpoints
 wandb
+dump/*
+!dump/.gitkeep

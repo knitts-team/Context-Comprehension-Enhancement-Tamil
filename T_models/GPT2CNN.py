@@ -1,4 +1,4 @@
-from transformers import AutoModelForSequenceClassification
+from transformers import AutoModelForCausalLM
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -7,7 +7,7 @@ class GPT2CNN(nn.Module):
     def __init__(self, device='cpu'):
           super(GPT2CNN, self).__init__()
           self.device = device
-          self.model = AutoModelForSequenceClassification.from_pretrained("abinayam/gpt-2-tamil")
+          self.model = AutoModelForCausalLM.from_pretrained("abinayam/gpt-2-tamil")
           # self.model = SentenceTransformer("abinayam/gpt-2-tamil")
           # self.model.config.pad_token_id = tokenizer.eos_token
           self.model.config.pad_token_id = 295
@@ -29,33 +29,33 @@ class GPT2CNN(nn.Module):
 
           x = sequence_output.logits
           x.to(self.device)
-      #     print('x.shape', x.shape) torch.Size([4, 2])
-      # #     x = torch.transpose(x, 1, 2)
+          print('x.shape', x.shape) # torch.Size([1, 2])
+        #   x = torch.transpose(x, 1, 2)
 
       #     # [batch_size, 1024, 2]
 
-      #     conv1_output = self.conv1(x)
+          conv1_output = self.conv1(x)
 
       #     # [batch_size, 512, 2]
 
-      #     conv2_output = self.conv2(conv1_output)
+          conv2_output = self.conv2(conv1_output)
 
       #     # [batch_size, 256, 2]
 
-      #     conv3_output = self.conv3(conv2_output)
+          conv3_output = self.conv3(conv2_output)
 
       #     # [batch_size, 128, 2]
 
-      #     conv4_output = self.conv4(conv3_output)
+          conv4_output = self.conv4(conv3_output)
 
       #     ## [batch_size, 12, 2]
 
-      #     conv5_output = self.conv5(conv4_output)
+          conv5_output = self.conv5(conv4_output)
 
 
-      #     conv5_output = torch.squeeze(conv5_output, 1)
-      #     sigmoid_output = F.log_softmax(conv5_output, dim=1) # [batch, 2] choose the second dimension (i.e, dim = 1)
+          conv5_output = torch.squeeze(conv5_output, 1)
+          sigmoid_output = F.log_softmax(conv5_output, dim=1) # [batch, 2] choose the second dimension (i.e, dim = 1)
 
-          sigmoid_output = F.log_softmax(x, dim=1) # [batch, 2] choose the second dimension (i.e, dim = 1)
+        #   sigmoid_output = F.log_softmax(x, dim=1) # [batch, 2] choose the second dimension (i.e, dim = 1)
 
           return sigmoid_output
