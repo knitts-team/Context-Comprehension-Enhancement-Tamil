@@ -13,8 +13,9 @@ import wandb
 
 import spacy
 
+from transformers import AutoTokenizer, AutoModelWithLMHead
 
-nlp = spacy.load('en_core_web_sm')
+
 
 
 def get_device():
@@ -23,7 +24,7 @@ def get_device():
 
 class T5Dataset(Dataset):
 
-    def __init__(self, data: pd.DataFrame, tokenizer: T5Tokenizer, source_text_len: int, target_text_len: int,
+    def __init__(self, data, tokenizer: T5Tokenizer, source_text_len: int, target_text_len: int,
                  source_attribute: str, target_attribute: str):
         self.__tokenizer = tokenizer
 
@@ -37,38 +38,61 @@ class T5Dataset(Dataset):
 
         self.__target_attribute = target_attribute
 
+        self.nlp = spacy.load('en_core_web_sm')
+
     def __len__(self):
         return len(self.__data)
 
     def __getitem__(self, index):
-        source_text = str(self.__data.iloc[index][self.__source_attribute])
 
-        target_text = str(self.__data.iloc[index][self.__target_attribute])
+        source_text = self.__data[index]
 
-        source = self.__tokenizer.batch_encode_plus([source_text],
-                                                    max_length=self.__source_text_len,
-                                                    pad_to_max_length=True,
-                                                    truncation=True,
-                                                    return_tensors='pt')
+        print(source_text)
 
-        target = self.__tokenizer.batch_encode_plus([target_text],
-                                                    truncation=True,
-                                                    max_length=self.__target_text_len,
-                                                    pad_to_max_length=True,
-                                                    return_tensors='pt')
+        
+        doc = self.nlp(source_text)
 
-        source_ids = source['input_ids'].squeeze()
+        li=[]
+        for token in doc:
+            li.append(token.lemma_)
+        
+        tokenized_sentence=""
+        for i in li:
+          tokenized_sentence += i + " "
 
-        source_mask = source['attention_mask'].squeeze()
 
-        target_ids = target['input_ids'].squeeze()
+        tokenized_sentence = tokenized_sentence.strip()
 
-        return {
-            'source_ids': source_ids.to(dtype=torch.long),
-            'source_mask': source_mask.to(dtype=torch.long),
-            'target_ids': target_ids.to(dtype=torch.long),
-            'target_ids_y': target_ids.to(dtype=torch.long)
-        }
+        print(tokenized_sentence) 
+
+        return {"sentence":source_text,"tokens":li}
+
+
+
+        # source = self.__tokenizer.batch_encode_plus([source_text],
+        #                                             max_length=self.__source_text_len,
+        #                                             pad_to_max_length=True,
+        #                                             truncation=True,
+        #                                             return_tensors='pt')
+
+        # target = self.__tokenizer.batch_encode_plus([target_text],
+        #                                             truncation=True,
+        #                                             max_length=self.__target_text_len,
+        #                                             pad_to_max_length=True,
+        #                                             return_tensors='pt')
+
+        # source_ids = source['input_ids'].squeeze()
+
+        # source_mask = source['attention_mask'].squeeze()
+
+        # target_ids = target['input_ids'].squeeze()
+
+        # return {
+        #     'source_ids': source_ids.to(dtype=torch.long),
+        #     'source_mask': source_mask.to(dtype=torch.long),
+        #     'target_ids': target_ids.to(dtype=torch.long),
+        #     'target_ids_y': target_ids.to(dtype=torch.long)
+        # }
 
 
 class Trainer:
@@ -268,8 +292,52 @@ class Trainer:
 
 if __name__ == '__main__':
 
-    trainer = Trainer()
+    # trainer = Trainer()
 
-    # TODO Where is your data ? Enter the path
-    datapath = '../dataset/sentence_doctor/sentence_doctor_dataset_300.csv'
-    trainer.start(datapath)
+    # # TODO Where is your data ? Enter the path
+    # datapath = '../dataset/sentence_doctor/sentence_doctor_dataset_300.csv'
+    # trainer.start(datapath)
+
+    dataset = load_dataset('glue', 'cola', split='train')
+
+    tokenizer = AutoTokenizer.from_pretrained("t5-small")
+
+    model = AutoModelWithLMHead.from_pretrained("t5-small")
+
+    config = wandb.config
+
+    config.TRAIN_BATCH_SIZE = 64
+
+    # TODO Set the batch size at validation time
+    config.VALID_BATCH_SIZE = 16
+
+    # TODO Set your training epochs
+    config.TRAIN_EPOCHS = 3
+
+    # TODO Set the validation epochs
+    config.VAL_EPOCHS = 1
+
+    # TODO Set the
+    config.LEARNING_RATE = 0.00005
+
+    # TODO Set your seed
+    config.SEED = 42
+
+    # TODO What is the ma length of your input ? (Note that the input is consist of source text and context if training sentence doctor).
+    #  Refer to the documentation under Usage if you don't know what is meant by context.
+    config.SOURCE_MAX_LEN = 64
+
+    # TODO What is the max length of your output ?
+    config.TARGET_MAX_LEN = 32
+
+    torch.manual_seed(config.SEED)
+
+    np.random.seed(config.SEED)
+
+    torch.backends.cudnn.deterministic = True
+
+
+    training_set = T5Dataset(dataset, tokenizer, config.SOURCE_MAX_LEN, config.TARGET_MAX_LEN, "source", "target")
+
+
+    print(training_set[2])
