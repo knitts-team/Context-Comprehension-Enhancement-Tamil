@@ -1,4 +1,5 @@
 ## OM NAMO NARAYANA
+
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
@@ -26,23 +27,22 @@ class CustomDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        sentence = self.dataset[idx]["sentence"]
+        sentence = self.dataset[idx]["text"]
         return sentence
 
 tokenizer = Tokenizer(BPE())
 tokenizer.pre_tokenizer = Whitespace()
-dataset = load_dataset('glue', 'cola', split='train')
+dataset = load_dataset('oscar' ,'unshuffled_deduplicated_ta', split='train')
 print('sample dataset: ', dataset[0], 'length: ', len(dataset))
 
 custom_dataset = CustomDataset(dataset)
 
 
-trainer = BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
+trainer = BpeTrainer(vocab_size =  3000, min_frequency = 2, special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
 tokenizer.train_from_iterator(custom_dataset, trainer=trainer)
 
-output = tokenizer.encode("Hello, y'all! How are you 😁 ?")
+output = tokenizer.encode("பொழுது சாய்ந்து வெகு நேரமாகிவிட்டது 😁")
 print(output.tokens)
-# ["Hello", ",", "y", "'", "all", "!", "How", "are", "you", "[UNK]", "?"]
 
 
 save_dir ='dump/glue/cola/'
