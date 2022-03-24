@@ -4,6 +4,7 @@
 - [Tokenizer Trainer](https://huggingface.co/docs/tokenizers/python/latest/api/reference.html#tokenizers.trainers.BpeTrainer)
 - [Tokenizer Normalization](https://huggingface.co/docs/tokenizers/python/latest/pipeline.html)
 - [tmux commands](https://lukaszwrobel.pl/blog/tmux-tutorial-split-terminal-windows-easily/)
+- [training from scratch](https://huggingface.co/blog/how-to-train)
 
 ### Vscode shortcuts
 
