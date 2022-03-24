@@ -11,7 +11,7 @@ from tqdm import tqdm
 from torch.utils.data import Dataset
 
 class CustomDataset(Dataset):
-    """T5 root2seq dataset."""
+    """CustomDataset dataset."""
 
     def __init__(self, dataset, transform=lambda k:k):
         """
@@ -30,27 +30,41 @@ class CustomDataset(Dataset):
         sentence = self.dataset[idx]["text"]
         return sentence
 
-tokenizer = Tokenizer(BPE())
-tokenizer.pre_tokenizer = Whitespace()
-dataset = load_dataset('oscar' ,'unshuffled_deduplicated_ta', split='train')
-print('sample dataset: ', dataset[0], 'length: ', len(dataset))
-
-custom_dataset = CustomDataset(dataset)
-
-
-trainer = BpeTrainer(vocab_size =  3000, min_frequency = 2, special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
-tokenizer.train_from_iterator(custom_dataset, trainer=trainer)
-
-output = tokenizer.encode("பொழுது சாய்ந்து வெகு நேரமாகிவிட்டது 😁")
-print(output.tokens)
-
 
 save_dir ='dump/glue/cola/'
 
+def train_tokenizer(save_dir='dump/glue/cola/'):
+    tokenizer = Tokenizer(BPE())    
+    tokenizer.pre_tokenizer = Whitespace()
+    dataset = load_dataset('oscar' ,'unshuffled_deduplicated_ta', split='train')
+    print('sample dataset: ', dataset[0], 'length: ', len(dataset))
+
+    custom_dataset = CustomDataset(dataset)
 
 
-try:
-    tokenizer.save(save_dir + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+'.json')
-except:
-    os.makedirs(save_dir)
-    tokenizer.save(save_dir + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+'.json')
+    trainer = BpeTrainer(vocab_size =  3000, min_frequency = 2, special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
+    tokenizer.train_from_iterator(custom_dataset, trainer=trainer)
+
+    output = tokenizer.encode("பொழுது சாய்ந்து வெகு நேரமாகிவிட்டது 😁")
+    print(output.tokens)
+
+    try:
+        tokenizer.save(save_dir + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+'.json')
+    except:
+        os.makedirs(save_dir)
+        tokenizer.save(save_dir + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+'.json')
+
+    return tokenizer
+
+def load_tokenizer(save_dir ='dump/glue/cola/'):
+    ls = os.listdir(save_dir)
+    ls.sort()
+    filename = save_dir+ls[-1]
+    tokenizer = Tokenizer.from_file(filename)
+    return tokenizer
+
+# train_tokenizer(save_dir=save_dir)
+tokenizer = load_tokenizer(save_dir=save_dir)
+output = tokenizer.encode("பொழுது சாய்ந்து வெகு நேரமாகிவிட்டது 😁")
+print(output.tokens)
+
