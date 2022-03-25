@@ -6,7 +6,9 @@
 - [tmux commands](https://lukaszwrobel.pl/blog/tmux-tutorial-split-terminal-windows-easily/)
 - [training from scratch](https://huggingface.co/blog/how-to-train)
 - [training from scratch - colab notebook](https://colab.research.google.com/github/huggingface/blog/blob/main/notebooks/01_how_to_train.ipynb#scrollTo=jU6JhBSTKiaM)
-
+- [huggingface trainer & wandb](https://docs.wandb.ai/guides/integrations/huggingface)
+- [wandb callback](https://huggingface.co/docs/transformers/main_classes/callback#transformers.integrations.WandbCallback)
+- [logging losses](https://discuss.huggingface.co/t/trainer-doesnt-show-the-loss-at-each-step/542/4)
 ### Vscode shortcuts
 
 - `ctrl+K V` preview markdown

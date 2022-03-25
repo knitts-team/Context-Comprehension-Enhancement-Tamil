@@ -13,11 +13,13 @@ from transformers import RobertaConfig
 from transformers import RobertaTokenizerFast
 from transformers import RobertaForMaskedLM
 from transformers import DataCollatorForLanguageModeling
-from transformers import Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments, TrainerCallback
+from sklearn.model_selection import train_test_split
 
 import torch
 from datasets import load_dataset
 from torch.utils.data import Dataset
+from rouge_score import rouge_scorer
 
 
 from datetime import datetime
@@ -88,7 +90,7 @@ Tamil_Dataset = {
 
 curDataset = English_Dataset
 
-save_dir = './dump/' + curDataset['dataset_name'] + './' + curDataset['dataset_subset'] + '/'
+save_dir = './dump/' + curDataset['dataset_name'] + '/' + curDataset['dataset_subset'] + '/'
 
 def train_tokenizer(dataset_name = "glue", dataset_subset="cola", text_label = "sentence", save_dir=None):
 
@@ -131,6 +133,30 @@ output = tokenizer.encode(curDataset['test_sentence'])
 print(output.tokens)
 
 
+class MyCallback(TrainerCallback):
+    "A callback that prints a message at the beginning of training"
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        print("args", args, "state", state, "control", control, 'kwargs', kwargs)
+
+# def compute_metrics(pred):
+#     labels_ids = pred.label_ids
+#     pred_ids = pred.predictions
+
+#     # all unnecessary tokens are removed
+#     pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
+#     label_str = tokenizer.batch_decode(labels_ids, skip_special_tokens=True)
+
+#     scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+#     rouge_output = scorer.score(predictions=pred_str, references=label_str)
+#     print('rouge_output', rouge_output)
+
+#     return {
+#         "rouge2_precision": round(rouge_output.precision, 4),
+#         "rouge2_recall": round(rouge_output.recall, 4),
+#         "rouge2_fmeasure": round(rouge_output.fmeasure, 4),
+#     }
+
 
 def train_model(curDataset, save_dir = "./glue/cola/"):
     config = RobertaConfig(
@@ -140,7 +166,7 @@ def train_model(curDataset, save_dir = "./glue/cola/"):
         num_hidden_layers=6,
         type_vocab_size=1,
     )
-    tokenizer = RobertaTokenizerFast.from_pretrained(save_dir, max_len=512)
+    tokenizer = RobertaTokenizerFast.from_pretrained(save_dir, max_len=512, padding="max_length")
     model = RobertaForMaskedLM(config=config)
     print('model.num_parameters(): ', model.num_parameters())
 
@@ -150,21 +176,34 @@ def train_model(curDataset, save_dir = "./glue/cola/"):
     dataset = load_dataset(curDataset['dataset_name'] , curDataset['dataset_subset'], split='train')
     custom_dataset = CustomDataset(dataset, tokenizer=tokenizer)
 
+    output_dir="./checkpoints/EsperBERTo/"
+    if(not os.path.isdir(output_dir)):
+        os.makedirs(output_dir)
+
     training_args = TrainingArguments(
-    output_dir="./EsperBERTo",
+    output_dir=output_dir,
     overwrite_output_dir=True,
-    num_train_epochs=1,
-    per_gpu_train_batch_size=64,
-    save_steps=10_000,
+    num_train_epochs=2,
+    per_device_train_batch_size=64,
+    save_steps=200,
     save_total_limit=2,
-    prediction_loss_only=True,
+    do_train=True,
+    # do_eval=True,
+    logging_steps=20,
+    # eval_steps=10,
+    # prediction_loss_only=True,
+    report_to="wandb",
+    
     )
 
     trainer = Trainer(
         model=model,
         args=training_args,
         data_collator=data_collator,
+        # compute_metrics=compute_metrics,
         train_dataset=custom_dataset,
+        # eval_dataset=custom_dataset,
+        callbacks=[MyCallback], 
     )
 
     trainer.train()
@@ -181,4 +220,5 @@ def train_model(curDataset, save_dir = "./glue/cola/"):
     print(fill_mask("<mask> is the largest country in the world."))
 
 curDataset = English_Dataset
+save_dir='./dump/glue/cola/'
 train_model(curDataset=curDataset, save_dir=save_dir)
