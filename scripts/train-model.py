@@ -19,7 +19,6 @@ from sklearn.model_selection import train_test_split
 import torch
 from datasets import load_dataset
 from torch.utils.data import Dataset
-from rouge_score import rouge_scorer
 
 
 from datetime import datetime
@@ -85,10 +84,10 @@ Tamil_Dataset = {
     'dataset_name': 'oscar',
     'dataset_subset': 'unshuffled_deduplicated_ta',
     'text_label' : 'text',
-    'test_sentence': "பொழுது சாய்ந்து வெகு நேரமாகிவிட்டது 😁 ?"
+    'test_sentence': "பொழுது சாய்ந்து வெகு நேரமாகிவிட்டது 😁 ?",
 }
 
-curDataset = English_Dataset
+curDataset = Tamil_Dataset
 
 save_dir = './dump/' + curDataset['dataset_name'] + '/' + curDataset['dataset_subset'] + '/'
 
@@ -97,7 +96,7 @@ def train_tokenizer(dataset_name = "glue", dataset_subset="cola", text_label = "
     if(save_dir==None):
         save_dir = './dump/' + dataset_name + '/' + dataset_subset + '/'
 
-    tokenizer = Tokenizer(BPE())    
+    tokenizer = ByteLevelBPETokenizer()
     tokenizer.pre_tokenizer = Whitespace()
     tokenizer.post_processor = TemplateProcessing(
         single="[CLS] $0 [SEP]",
@@ -127,7 +126,7 @@ def load_tokenizer(save_dir ='dump/glue/cola/'):
 
 print('curDataset:', curDataset)
 
-# train_tokenizer(dataset_name=curDataset['dataset_name'], dataset_subset=curDataset['dataset_subset'], text_label=curDataset['text_label'])
+train_tokenizer(dataset_name=curDataset['dataset_name'], dataset_subset=curDataset['dataset_subset'], text_label=curDataset['text_label'])
 tokenizer = load_tokenizer(save_dir=save_dir)
 output = tokenizer.encode(curDataset['test_sentence'])
 print(output.tokens)
@@ -139,26 +138,8 @@ class MyCallback(TrainerCallback):
     def on_train_begin(self, args, state, control, **kwargs):
         print("args", args, "state", state, "control", control, 'kwargs', kwargs)
 
-# def compute_metrics(pred):
-#     labels_ids = pred.label_ids
-#     pred_ids = pred.predictions
 
-#     # all unnecessary tokens are removed
-#     pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
-#     label_str = tokenizer.batch_decode(labels_ids, skip_special_tokens=True)
-
-#     scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
-#     rouge_output = scorer.score(predictions=pred_str, references=label_str)
-#     print('rouge_output', rouge_output)
-
-#     return {
-#         "rouge2_precision": round(rouge_output.precision, 4),
-#         "rouge2_recall": round(rouge_output.recall, 4),
-#         "rouge2_fmeasure": round(rouge_output.fmeasure, 4),
-#     }
-
-
-def train_model(curDataset, save_dir = "./glue/cola/"):
+def train_model(curDataset, save_dir = "./glue/cola/", model_dir="./checkpoints/models/EsperBERTo/"):
     config = RobertaConfig(
         vocab_size=52_000,
         max_position_embeddings=514,
@@ -176,22 +157,19 @@ def train_model(curDataset, save_dir = "./glue/cola/"):
     dataset = load_dataset(curDataset['dataset_name'] , curDataset['dataset_subset'], split='train')
     custom_dataset = CustomDataset(dataset, tokenizer=tokenizer)
 
-    output_dir="./checkpoints/EsperBERTo/"
+    output_dir= model_dir
     if(not os.path.isdir(output_dir)):
         os.makedirs(output_dir)
 
     training_args = TrainingArguments(
     output_dir=output_dir,
     overwrite_output_dir=True,
-    num_train_epochs=2,
+    num_train_epochs=100,
     per_device_train_batch_size=64,
-    save_steps=200,
+    save_steps=10,
     save_total_limit=2,
     do_train=True,
-    # do_eval=True,
-    logging_steps=20,
-    # eval_steps=10,
-    # prediction_loss_only=True,
+    logging_steps=50,
     report_to="wandb",
     
     )
@@ -200,9 +178,7 @@ def train_model(curDataset, save_dir = "./glue/cola/"):
         model=model,
         args=training_args,
         data_collator=data_collator,
-        # compute_metrics=compute_metrics,
         train_dataset=custom_dataset,
-        # eval_dataset=custom_dataset,
         callbacks=[MyCallback], 
     )
 
@@ -216,9 +192,18 @@ def train_model(curDataset, save_dir = "./glue/cola/"):
         tokenizer=save_dir
     )
 
-    print(fill_mask("My name <mask> Arvinth."))
+    # print(fill_mask("My name <mask> Arvinth."))
+    # print(fill_mask("<mask> is the largest country in the world."))
+    print(fill_mask("பொழுது சாய்ந்து <mask> நேரமாகிவிட்டது 😁 ?"))
     print(fill_mask("<mask> is the largest country in the world."))
 
-curDataset = English_Dataset
-save_dir='./dump/glue/cola/'
-train_model(curDataset=curDataset, save_dir=save_dir)
+curDataset = Tamil_Dataset
+
+save_dir = './dump/' + curDataset['dataset_name'] + '/' + curDataset['dataset_subset'] + '/'
+model_dir = './checkpoints/models/' + curDataset['dataset_name'] + '/' + curDataset['dataset_subset'] + '/'
+if(not os.path.isdir(model_dir)):
+    os.makedirs(model_dir)
+if(not os.path.isdir(save_dir)):
+    os.makedirs(save_dir)
+
+train_model(curDataset=curDataset, save_dir=save_dir, model_dir=model_dir)
