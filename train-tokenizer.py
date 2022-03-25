@@ -11,8 +11,9 @@ from tokenizers.trainers import BpeTrainer
 from transformers import pipeline
 from transformers import RobertaConfig
 from transformers import RobertaTokenizerFast
-
-
+from transformers import RobertaForMaskedLM
+from transformers import DataCollatorForLanguageModeling
+from transformers import Trainer, TrainingArguments
 
 import torch
 from datasets import load_dataset
@@ -56,9 +57,7 @@ class CustomDataset(Dataset):
 
 
     def trainTokenizer(self):
-        # trainer = BpeTrainer(vocab_size =  3000, min_frequency = 2, special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
         dataset_text = [ele[self.text_label] for ele in self.dataset]
-        # self.tokenizer.train_from_iterator(dataset_text, trainer=trainer)
         self.tokenizer.train_from_iterator(dataset_text, vocab_size =  3000, min_frequency = 2, special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
         return self.tokenizer
 
@@ -112,41 +111,74 @@ def train_tokenizer(dataset_name = "glue", dataset_subset="cola", text_label = "
     tokenizer = custom_dataset.getTokenizer()
 
     try:
-        # tokenizer.save_model(save_dir + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+'.json')
         tokenizer.save_model(save_dir )
     except:
         os.makedirs(save_dir)
-        # tokenizer.save_model(save_dir + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+'.json')
         tokenizer.save_model(save_dir)
 
     return tokenizer
 
 def load_tokenizer(save_dir ='dump/glue/cola/'):
-    # ls = os.listdir(save_dir)
-    # ls.sort()
-    # filename = save_dir+ls[-1]
     tokenizer = ByteLevelBPETokenizer(save_dir + 'vocab.json', save_dir + 'merges.txt')
     return tokenizer
 
 
 print('curDataset:', curDataset)
 
-train_tokenizer(dataset_name=curDataset['dataset_name'], dataset_subset=curDataset['dataset_subset'], text_label=curDataset['text_label'])
+# train_tokenizer(dataset_name=curDataset['dataset_name'], dataset_subset=curDataset['dataset_subset'], text_label=curDataset['text_label'])
 tokenizer = load_tokenizer(save_dir=save_dir)
 output = tokenizer.encode(curDataset['test_sentence'])
 print(output.tokens)
 
 
-config = RobertaConfig(
-    vocab_size=52_000,
-    max_position_embeddings=514,
-    num_attention_heads=12,
-    num_hidden_layers=6,
-    type_vocab_size=1,
-)
 
+def train_model(curDataset, save_dir = "./glue/cola/"):
+    config = RobertaConfig(
+        vocab_size=52_000,
+        max_position_embeddings=514,
+        num_attention_heads=12,
+        num_hidden_layers=6,
+        type_vocab_size=1,
+    )
+    tokenizer = RobertaTokenizerFast.from_pretrained(save_dir, max_len=512)
+    model = RobertaForMaskedLM(config=config)
+    print('model.num_parameters(): ', model.num_parameters())
 
-ls = os.listdir(save_dir)
-ls.sort()
-# filename = save_dir+ls[-1]
-tokenizer = RobertaTokenizerFast.from_pretrained(save_dir, max_len=512)
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer, mlm=True, mlm_probability=0.15
+    )
+    dataset = load_dataset(curDataset['dataset_name'] , curDataset['dataset_subset'], split='train')
+    custom_dataset = CustomDataset(dataset, tokenizer=tokenizer)
+
+    training_args = TrainingArguments(
+    output_dir="./EsperBERTo",
+    overwrite_output_dir=True,
+    num_train_epochs=1,
+    per_gpu_train_batch_size=64,
+    save_steps=10_000,
+    save_total_limit=2,
+    prediction_loss_only=True,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        data_collator=data_collator,
+        train_dataset=custom_dataset,
+    )
+
+    trainer.train()
+
+    trainer.save_model(save_dir)
+
+    fill_mask = pipeline(
+        "fill-mask",
+        model=save_dir,
+        tokenizer=save_dir
+    )
+
+    print(fill_mask("My name <mask> Arvinth."))
+    print(fill_mask("<mask> is the largest country in the world."))
+
+curDataset = English_Dataset
+train_model(curDataset=curDataset, save_dir=save_dir)
